@@ -1,24 +1,20 @@
-/* eslint-disable */
+/* eslint-disable require-jsdoc, no-use-before-define, no-underscore-dangle, no-console */
 /* eslint-env node,es6 */
 /**
  * @module plugins/highcharts.jsdoc
  * @author Chris Vasseng
  */
 
-"use strict";
 
-var hcRoot = __dirname + '/../../..';
+const exec = require('child_process').execSync;
+const logger = require('jsdoc/util/logger');
+const fs = require('fs');
+const path = require('jsdoc/path');
+const getPalette = require('highcharts-assembler/src/process.js').getPalette;
+const outputRawDoclets = require('../output-raw-doclets');
 
-var parseTag = require('jsdoc/tag/type').parse;
-
-var exec = require('child_process').execSync;
-var logger = require('jsdoc/util/logger');
-var Doclet = require('jsdoc/doclet.js').Doclet;
-var colors = require('colors');
-var fs = require('fs');
-var getPalette = require('highcharts-assembler/src/process.js').getPalette;
-var path = require('path');
-var options = {
+const hcRoot = path.join(__dirname, '/../../..');
+const AllOptions = {
     _meta: {
         commit: '',
         branch: ''
@@ -37,25 +33,24 @@ function getLocation(option) {
 }
 
 function dumpOptions() {
-    fs.writeFile(
+    fs.writeFileSync(
         'tree.json',
         JSON.stringify(
-            options,
-            undefined,
+            AllOptions,
+            null,
             '  '
-        ),
-        function () {
-            //console.log('Wrote tree!');
-        }
+        )
     );
 }
 
+// eslint-disable-next-line no-unused-vars
 function createSitemaps() {
-    let manualBoost = {
-            'plotOptions.series': 100,
-        },
-        sitemapIndex = [],
-        sitemaps = {};
+    const manualBoost = {
+        'plotOptions.series': 100
+    };
+    const sitemapIndex = [];
+    const sitemaps = {};
+
     // Add function for option sitemaps
     function addToSitemaps(node, boost, parentProducts) {
         if (!node.doclet ||
@@ -66,9 +61,9 @@ function createSitemaps() {
         }
         boost = (manualBoost[node.meta.fullname] || boost);
         let products = (parentProducts || node.doclet.products);
-        for (var i = 0, ie = products.length; i < ie; ++i) {
+        for (let i = 0, ie = products.length; i < ie; ++i) {
             let product = products[i];
-            sitemaps[product] = (sitemaps[product] || [])
+            sitemaps[product] = (sitemaps[product] || []);
             sitemaps[product].push(
                 '<url><loc>https://api.highcharts.com/' + product + '/' +
                 node.meta.fullname + '.html</loc><priority>' +
@@ -80,32 +75,39 @@ function createSitemaps() {
             return;
         }
         boost -= 5;
-        for (var child in node.children) {
-            addToSitemaps(node.children[child], boost, products);
+        for (const child in node.children) {
+            if (node.children.hasOwnProperty(child)) {
+                addToSitemaps(node.children[child], boost, products);
+            }
         }
     }
+
     // Directory function
     function createDirectoriesSync(dirPath, mode, callback) {
         try {
             fs.mkdirSync(dirPath, mode);
-            callback && callback();
+            if (callback) {
+                // eslint-disable-next-line callback-return
+                callback();
+            }
         } catch (error) {
             if (error.errno === 34) {
                 createDirectoriesSync(path.dirname(dirPath), mode, callback);
                 createDirectoriesSync(dirPath, mode, callback);
             }
         }
-    };
+    }
+
     // Add Highcharts options
-    for (var option in options) {
-        if (options[option].doclet &&
-            options[option].doclet.products
+    for (var option in AllOptions) {
+        if (AllOptions[option].doclet &&
+            AllOptions[option].doclet.products
         ) {
-            addToSitemaps(options[option], 100,
-                options[option].doclet.products
+            addToSitemaps(AllOptions[option], 100,
+                AllOptions[option].doclet.products
             );
         } else {
-            addToSitemaps(options[option], 100, [
+            addToSitemaps(AllOptions[option], 100, [
                 'highcharts', 'highstock', 'highmaps'
             ]);
         }
@@ -113,7 +115,7 @@ function createSitemaps() {
     // Add Highcharts class reference to products
     sitemaps['class-reference'] = (sitemaps['class-reference'] || []);
     fs.readdirSync('build/api/class-reference').forEach(function (fileName) {
-        if (fileName.lastIndexOf('.html') != fileName.length - 5) {
+        if (fileName.lastIndexOf('.html') !== fileName.length - 5) {
             return;
         }
         sitemaps['class-reference'].push(
@@ -122,20 +124,22 @@ function createSitemaps() {
         );
     });
     // Add Highcharts products to sitemap index
-    for (var product in sitemaps) {
-        sitemapIndex.push(
-            '<sitemap><loc>https://api.highcharts.com/' + product +
-            '/sitemap.xml</loc></sitemap>'
-        );
+    for (const product in sitemaps) {
+        if (sitemaps.hasOwnProperty(product)) {
+            sitemapIndex.push(
+                '<sitemap><loc>https://api.highcharts.com/' + product +
+                '/sitemap.xml</loc></sitemap>'
+            );
+        }
     }
     // Add Highcharts wrapper to sitemap index
     sitemapIndex.push(
-        '<sitemap><loc>'+
+        '<sitemap><loc>' +
         'https://api.highcharts.com/ios/highcharts/sitemap.xml' +
         '</loc></sitemap>'
     );
     sitemapIndex.push(
-        '<sitemap><loc>'+
+        '<sitemap><loc>' +
         'https://api.highcharts.com/android/highcharts/sitemap.xml' +
         '</loc></sitemap>'
     );
@@ -149,31 +153,33 @@ function createSitemaps() {
             sitemapIndex.sort().join('') +
             '</sitemapindex>'
         );
-        for (var product in sitemaps) {
-            createDirectoriesSync('build/api/' + product);
-            fs.writeFileSync(
-                'build/api/' + product + '/sitemap.xml',
-                '<?xml version="1.0" encoding="UTF-8"?>' +
-                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-                sitemaps[product].sort().join('') +
-                '</urlset>'
-            );
+        for (const product in sitemaps) {
+            if (sitemaps.hasOwnProperty(product)) {
+                createDirectoriesSync('build/api/' + product);
+                fs.writeFileSync(
+                    'build/api/' + product + '/sitemap.xml',
+                    '<?xml version="1.0" encoding="UTF-8"?>' +
+                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+                    sitemaps[product].sort().join('') +
+                    '</urlset>'
+                );
+            }
         }
-        //console.log('Wrote sitemaps!');
+        // console.log('Wrote sitemaps!');
     } catch (error) {
         console.error(error);
     }
 }
 
 function resolveBinaryExpression(node) {
-    var val = '';
-    var lside = '';
-    var rside = '';
+    let val = '';
+    let lside = '';
+    let rside = '';
 
     if (node.left.type === 'Literal') {
-        lside = node.left.value;    
-    } 
-        
+        lside = node.left.value;
+    }
+
     if (node.right.type === 'Literal') {
         rside = node.right.value;
     }
@@ -199,219 +205,196 @@ function resolveBinaryExpression(node) {
     return val;
 }
 
-function decorateOptions(parent, target, option, filename) {
-    var index;
-
-    if (!option) {
-        console.log('WARN: decorateOptions called with no valid AST node');
+/*
+ * decorate options properties, mainly for those properties inside the option tree while nears the leaf end
+ */
+function decorateOptions(parent, optionMap, optionNode, filename) {
+    if (!optionNode) {
+        optionMap.log('WARN: decorateOptions called with no valid AST node');
         return;
     }
 
     if (
-        option.leadingComments &&
-        option.leadingComments[0].value.indexOf('@ignore') !== -1
+        optionNode.leadingComments &&
+        optionNode.leadingComments[0].value.includes('@ignore')
     ) {
         return;
     }
 
-    index = option.key.name;
+    const index = optionNode.key.name;
 
+    // turn `x` into `x.`
     if (parent && parent.length > 0) {
         parent += '.';
     }
 
-    target[index] = target[index] || {
+    optionMap[index] = optionMap[index] || {
         doclet: {},
-      //  type: option.key.type,
+        //  type: option.key.type,
         children: {}
     };
 
     // Look for the start of the doclet first
-    var location = getLocation(option);
+    const location = getLocation(optionNode);
 
-
-    target[index].meta = {
+    optionMap[index].meta = {
         fullname: parent + index,
         name: index,
         line: location.start.line,
         lineEnd: location.end.line,
         column: location.start.column,
-        filename: filename//.replace('highcharts/', '')
+        filename: filename
     };
 
-    if (option.value && option.value.type == 'ObjectExpression') {
-
-        // This is a nested object probably
-        option.value.properties.forEach(function (sub) {
-            var s = {};
-
-            s = target[index].children;
-
-            decorateOptions(
-                parent + index,
-                s,
-                sub,
-                filename
-            );
-        });
-    } else if (option.value && option.value.type === 'Literal') {
-       target[index].meta.default = option.value.value;
-       //target[option.key.name].meta.type = option.value.type;
-    } else if (option.value && option.value.type === 'UnaryExpression') {
-        if (option.value.argument && option.value.argument.type === 'Literal') {
-            target[index].meta.default = option.value.operator + option.value.argument.value;
-
-            if (!isNaN(target[index].meta.default) && isFinite(target[index].meta.default)) {
-                target[index].meta.default = parseInt(target[index].meta.default, 10);
-            }
-        }
-    } else if (option.value && option.value.type === 'BinaryExpression') {
-        target[index].meta.default = resolveBinaryExpression(option.value);
-    } else {
-      // if (option.leadingComments && option.leadingComments[0].value.indexOf('@apioption') >= 0) {
-        // console.log('OPTION:', option, 'COMMENT:', option.leadingComments);
-      // }
-    }
+    calculateOptionDefault(optionNode, optionMap, index, parent, filename);
 
     // Add options decorations directly to the node
-    option.highcharts = option.highcharts || {};
-    option.highcharts.fullname = parent + index;
-    option.highcharts.name = index;
-    option.highcharts.isOption = true;
+    optionNode.highcharts = optionNode.highcharts || {};
+    optionNode.highcharts.fullname = parent + index;
+    optionNode.highcharts.name = index;
+    optionNode.highcharts.isOption = true;
 }
+
+function calculateOptionDefault(optionNode, optionMap, index, parent, filename) {
+    if (optionNode.value) {
+        switch (optionNode.value.type) {
+            case 'ObjectExpression':
+                // This is a nested object probably
+                optionNode.value.properties.forEach(function (sub) {
+                    const s = optionMap[index].children;
+
+                    decorateOptions(
+                        parent + index,
+                        s,
+                        sub,
+                        filename
+                    );
+                });
+                break;
+
+            case 'Literal':
+                optionMap[index].meta.default = optionNode.value.value;
+                break;
+
+            case 'UnaryExpression':
+                if (optionNode.value.argument && optionNode.value.argument.type === 'Literal') {
+                    optionMap[index].meta.default = optionNode.value.operator + optionNode.value.argument.value;
+
+                    if (!isNaN(optionMap[index].meta.default) && isFinite(optionMap[index].meta.default)) {
+                        optionMap[index].meta.default = parseInt(optionMap[index].meta.default, 10);
+                    }
+                }
+                break;
+
+            case 'ArrayExpression':
+                optionMap[index].meta.default = `[${optionNode.value.elements.map(elem => elem.value).join(',')}]`;
+                break;
+
+            case 'BinaryExpression':
+                optionMap[index].meta.default = resolveBinaryExpression(optionNode.value);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
 
 function appendComment(node, lines) {
 
-  if (typeof node.comment !== 'undefined') {
-    node.comment = node.comment.replace(/\/\*/g, '').replace(/\*\//g, '*');
-    node.comment = '/**\n' + node.comment + '\n* ' + lines.join('\n* ') + '\n*/';
-  } else {
-    node.comment = '/**\n* ' + lines.join('\n* ') + '\n*/';
-  }
+    if (typeof node.comment !== 'undefined') {
+        node.comment = node.comment.replace(/\/\*/g, '').replace(/\*\//g, '*');
+        node.comment = '/**\n' + node.comment + '\n* ' + lines.join('\n* ') + '\n*/';
+    } else {
+        node.comment = '/**\n* ' + lines.join('\n* ') + '\n*/';
+    }
 
-  node.event = 'jsdocCommentFound';
+    node.event = 'jsdocCommentFound';
 }
 
-function nodeVisitor(node, e, parser, currentSourceName) {
-    var exp,
-        args,
-        target,
-        parent,
-        comment,
-        properties,
-        fullPath,
-        s,
-        rawComment,
-        shouldIgnore = false
-    ;
+function decorateProperties(node, filename, parentPath, optionMap, evt) {
+    let properties;
+    if (node.type === 'CallExpression' && node.callee.name === 'seriesType') {
+        console.log('    found series type', node.arguments[0].value, '- inherited from', node.arguments[1].value);
+        properties = node.arguments[2].properties;
+    } else if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression' && node.callee.property.name === 'setOptions') {
+        properties = node.arguments[0].properties;
+    } else if (node.type === 'ObjectExpression') {
+        properties = node.properties;
+    } else if (node.init && node.init.type === 'ObjectExpression') {
+        properties = node.init.properties;
+    } else if (node.value && node.value.type === 'ObjectExpression') {
+        properties = node.value.properties;
+    } else if (node.operator === '=' && node.right.type === 'ObjectExpression') {
+        properties = node.right.properties;
+    } else if (node.right && node.right.type === 'CallExpression' && node.right.callee.property.name === 'seriesType') {
+        console.log('    found series type', node.right.arguments[0].value, '- inherited from', node.right.arguments[1].value);
+        properties = node.right.arguments[2].properties;
+    } else {
+        logger.error('code tagged with @optionparent must be an object:', filename, node);
+    }
+
+    if (properties && properties.length > 0) {
+        properties.forEach(function (child) {
+            decorateOptions(parentPath, optionMap, child, evt.filename || filename);
+        });
+    } else {
+        console.log('INVALID properties for node', node);
+    }
+}
+
+function nodeVisitor(node, evt, parser, currentSourceName) {
+    let shouldIgnore = false;
 
     if (node.highcharts && node.highcharts.isOption) {
 
-      shouldIgnore = (e.comment || '').indexOf('@ignore-option') > 0;
+        shouldIgnore = (evt.comment || '').includes('@ignore-option');
 
-      if (shouldIgnore) {
-        removeOption(node.highcharts.fullname);
+        if (shouldIgnore) {
+            removeOption(node.highcharts.fullname);
+            return;
+        } else if (!(evt.comment || '').includes('@apioption')) {
+            appendComment(evt, ['@optionparent ' + node.highcharts.fullname]);
+        } else if ((evt.comment || '').includes('@apioption tooltip')) {
+            console.log(evt.comment);
+        }
+
         return;
-
-      } else if ((e.comment || '').indexOf('@apioption') < 0) {
-        appendComment(e, [
-          '@optionparent ' + node.highcharts.fullname
-        ]);
-      } else if ((e.comment || '').indexOf('@apioption tooltip') >= 0) {
-        console.log(e.comment);
-      }
-
-      return;
     }
 
     if (node.leadingComments && node.leadingComments.length > 0) {
 
-        if (!e.comment) {
-            rawComment = '';
-            (node.leadingComments || []).some(function (c) {
+        if (!evt.comment) {
+            let rawComment = '';
+            (node.leadingComments || []).find(function (c) {
                 // We only use the one containing @optionparent
                 rawComment = c.raw || c.value;
-                if (rawComment.indexOf('@optionparent') >= 0) {
-                    return true;
-                }
-                return false;
+                return rawComment.includes('@optionparent');
             });
 
-            e.comment = rawComment;
-          // e.comment = node.leadingComments[0].raw || node.leadingComments[0].value;
+            evt.comment = rawComment;
+            // e.comment = node.leadingComments[0].raw || node.leadingComments[0].value;
         }
 
-        s = e.comment.indexOf('@optionparent');
+        const parentIndex = evt.comment.indexOf('@optionparent');
 
-        if (s >= 0) {
-            s = e.comment.substr(s).trim();
-            fullPath = '';
+        if (parentIndex >= 0) {
+            // something like `x.y.z`
+            const potentialParentPath = evt.comment.substr(parentIndex).trim().split('\n')[0].trim().split(' ');
 
-            parent = s.split('\n')[0].trim().split(' ');
+            let parentPath;
+            let optionMap;
 
-            if (parent && parent.length > 1) {
-                parent = parent[1].trim() || '';
-
-                s = parent.split('.');
-                target = options;
-
-                s.forEach(function (p, i) {
-                    // p = p.trim();
-
-                    fullPath = fullPath + (fullPath.length > 0 ? '.' : '') + p
-
-                    target[p] = target[p] || {};
-
-                    target[p].doclet = target[p].doclet || {};
-                    target[p].children = target[p].children || {};
-
-                    var location = getLocation(node);
-                    target[p].meta = {
-                        filename: currentSourceName,
-                        name: p,
-                        fullname: fullPath,
-                        line: location.start.line,
-                        lineEnd: location.end.line,
-                        column: location.start.column
-                    };
-
-                    target = target[p].children;
-
-                });
+            if (potentialParentPath && potentialParentPath.length > 1) {
+                parentPath = potentialParentPath[1].trim() || '';
+                optionMap = createSubOptionTree(parentPath, node, currentSourceName);
             } else {
-                parent = '';
-                target = options;
+                parentPath = '';
+                optionMap = AllOptions;
             }
-
-            if (target) {
-                if (node.type === 'CallExpression' && node.callee.name === 'seriesType') {
-                    console.log('    found series type', node.arguments[0].value, '- inherited from', node.arguments[1].value);
-                    // console.log('Found series type:', properties, JSON.stringify(node.arguments[2], false, '  '));
-                    properties = node.arguments[2].properties;
-                } else if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression' && node.callee.property.name === 'setOptions') {
-                    properties = node.arguments[0].properties;
-                } else if (node.type === 'ObjectExpression') {
-                    properties = node.properties;
-                } else if (node.init && node.init.type === 'ObjectExpression') {
-                    properties = node.init.properties;
-                } else if (node.value && node.value.type === 'ObjectExpression') {
-                    properties = node.value.properties;
-                } else if (node.operator === '=' && node.right.type === 'ObjectExpression') {
-                    properties = node.right.properties;
-                } else if (node.right && node.right.type === 'CallExpression' && node.right.callee.property.name === 'seriesType') {
-console.log('    found series type', node.right.arguments[0].value, '- inherited from', node.right.arguments[1].value);
-                    properties = node.right.arguments[2].properties;
-                } else {
-                    logger.error('code tagged with @optionparent must be an object:', currentSourceName, node);
-                }
-
-                if (properties && properties.length > 0) {
-                    properties.forEach(function (child) {
-                        decorateOptions(parent, target, child, e.filename || currentSourceName);
-                    });
-                } else {
-                    console.log('INVALID properties for node', node);
-                }
+            if (optionMap) {
+                decorateProperties(node, currentSourceName, parentPath, optionMap, evt);
             } else {
                 logger.error('@optionparent is missing an argument');
             }
@@ -419,41 +402,73 @@ console.log('    found series type', node.right.arguments[0].value, '- inherited
     }
 }
 
+/*
+ * construct a subtree of the target option parent, like x.y.z
+ * to be { x: { children: { y: { children: { z: {} } } } } }
+ */
+function createSubOptionTree(pathStr, node, filename) {
+    const seqs = pathStr.split('.');
+    let optionMap = AllOptions;
+    let fullPath = '';
+
+    seqs.forEach(function (p) {
+        fullPath = fullPath + (fullPath.length > 0 ? '.' : '') + p;
+
+        optionMap[p] = optionMap[p] || {};
+
+        optionMap[p].doclet = optionMap[p].doclet || {};
+        optionMap[p].children = optionMap[p].children || {};
+
+        let location = getLocation(node);
+        optionMap[p].meta = {
+            filename,
+            name: p,
+            fullname: fullPath,
+            line: location.start.line,
+            lineEnd: location.end.line,
+            column: location.start.column
+        };
+
+        optionMap = optionMap[p].children;
+    });
+
+    return optionMap;
+}
+
+// eslint-disable-next-line
 ////////////////////////////////////////////////////////////////////////////////
 
 function isNum(what) {
     return !isNaN(parseFloat(what)) && isFinite(what);
-};
+}
 
-function isBool (what) {
+function isBool(what) {
     return (what === true || what === false);
-};
+}
 
-function isStr (what) {
+function isStr(what) {
     return (typeof what === 'string' || what instanceof String);
-};
+}
 
-function inferType(node) {
-    var defVal;
+function inferType(opt) {
+    opt.doclet = opt.doclet || {};
+    opt.meta = opt.meta || {};
 
-    node.doclet = node.doclet || {};
-    node.meta = node.meta || {};
-
-    if (typeof node.doclet.type !== 'undefined') {
+    if (typeof opt.doclet.type !== 'undefined') {
         // We allready have a type, so no infering is required
         return;
     }
 
-    defVal = node.doclet.defaultvalue;
+    let defaultVal = opt.doclet.defaultvalue;
 
-    if (typeof node.meta.default !== 'undefined' && typeof node.doclet.defaultvalue === 'undefined') {
-        defVal = node.meta.default;
+    if (typeof opt.meta.default !== 'undefined' && typeof opt.doclet.defaultvalue === 'undefined') {
+        defaultVal = opt.meta.default;
     }
 
-    if (typeof defVal === 'undefined') {
+    if (typeof defaultVal === 'undefined') {
         // There may still be hope - if this node has children, it's an object.
-        if (node.children && Object.keys(node.children).length) {
-            node.doclet.type = {
+        if (opt.children && Object.keys(opt.children).length) {
+            opt.doclet.type = {
                 names: ['Object']
             };
         }
@@ -461,44 +476,44 @@ function inferType(node) {
         // We can't infer this type, so abort.
         return;
     }
-    
-    node.doclet.type = { names: [] };
-    
-    if (isBool(defVal)) {
-        node.doclet.type.names.push('Boolean');
+
+    opt.doclet.type = {
+        names: []
+    };
+
+    if (isBool(defaultVal)) {
+        opt.doclet.type.names.push('Boolean');
     }
-    
-    if (isNum(defVal)) {
-        node.doclet.type.names.push('Number');
+
+    if (isNum(defaultVal)) {
+        opt.doclet.type.names.push('Number');
     }
-    
-    if (isStr(defVal)) {
-        node.doclet.type.names.push('String');
+
+    if (isStr(defaultVal)) {
+        opt.doclet.type.names.push('String');
     }
 
     // If we were unable to deduce a type, assume it's an object
-    if (node.doclet.type.names.length === 0) {
-        node.doclet.type.names.push('Object');
+    if (opt.doclet.type.names.length === 0) {
+        opt.doclet.type.names.push('Object');
     }
 
 }
 
-function augmentOption(path, obj) {
+function augmentOption(opath, doclet) {
     // This is super nasty.
-    var current = options,
-        p = (path || '').trim().split('.')
-    ;
+    let current = AllOptions,
+        segments = (opath || '').trim().split('.');
 
-    if (!obj) {
+    if (!doclet || !opath) {
         return;
     }
 
     try {
-
-        p.forEach(function (thing, i) {
+        segments.forEach(function (thing, i) {
             // thing = thing.trim();
 
-            if (i === p.length - 1) {
+            if (i === segments.length - 1) {
                 // Merge in stuff
                 current[thing] = current[thing] || {};
 
@@ -508,41 +523,42 @@ function augmentOption(path, obj) {
 
                 // Free floating doclets marked with @apioption
                 if (!current[thing].meta.filename) {
-                    current[thing].meta.filename = obj.meta.path + '/' + obj.meta.filename;
-                    current[thing].meta.line = obj.meta.lineno;
-                    current[thing].meta.lineEnd = obj.meta.lineno + obj.comment.split(/\n/g).length - 1;
+                    current[thing].meta.filename = doclet.meta.path + '/' + doclet.meta.filename;
+                    current[thing].meta.line = doclet.meta.lineno;
+                    current[thing].meta.lineEnd = doclet.meta.lineno + doclet.comment.split(/\n/g).length - 1;
                 }
 
-                Object.keys(obj).forEach(function (property) {
+                Object.keys(doclet).forEach(function (property) {
                     if (property !== 'comment' && property !== 'meta') {
-                        current[thing].doclet[property] = obj[property];
+                        current[thing].doclet[property] = doclet[property];
                     }
                 });
                 return;
             }
 
-            current[thing] = current[thing] || {children: {}};
+            current[thing] = current[thing] || {
+                children: {}
+            };
             current = current[thing].children;
         });
 
     } catch (e) {
-        console.log('ERROR deducing path', path);
+        console.log('ERROR deducing path', opath);
     }
 }
 
-function removeOption(path) {
-    var current = options,
-        p = (path || '').split('.')
-    ;
+function removeOption(opath) {
+    let current = AllOptions,
+        segments = (opath || '').split('.');
 
     // console.log('found ignored option: removing', path);
 
-    if (!p) {
+    if (!segments) {
         return;
     }
 
-    p.some(function (thing, i) {
-        if (i === p.length - 1) {
+    segments.some(function (thing, i) {
+        if (i === segments.length - 1) {
             delete current[thing];
             return true;
         }
@@ -552,15 +568,17 @@ function removeOption(path) {
         }
 
         current = current[thing].children;
+
+        return false;
     });
 }
 
-/**
+/*
  * Resolve properties where the product can be specified like {highcharts|highmaps}
  * etc. Return an object with value and products.
  */
 function resolveProductTypes(doclet, tagObj) {
-    var reg = /^\{([a-z\|]+)\}/g,
+    let reg = /^\{([a-z\|]+)\}/g,
         match = tagObj.value.match(reg),
         products,
         value = tagObj.value;
@@ -570,13 +588,14 @@ function resolveProductTypes(doclet, tagObj) {
         products = match[0].replace('{', '').replace('}', '').split('|');
     }
 
-
-    return doclet[tagObj.originalTitle] = {
+    doclet[tagObj.originalTitle] = {
         value: value.trim(),
         products: products
     };
+    return doclet[tagObj.originalTitle];
 }
 
+// eslint-disable-next-line
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineTags = function (dictionary) {
@@ -584,30 +603,33 @@ exports.defineTags = function (dictionary) {
         onTagged: function (doclet, tagObj) {
 
             if (doclet.ignored) {
-                return removeOption(tagObj.value);
+                removeOption(tagObj.value);
+                return;
             }
 
             augmentOption(tagObj.value, doclet);
+            doclet.apioption = true;
+
+            doclet.name = tagObj.value;
         }
     });
 
     dictionary.defineTag('sample', {
         onTagged: function (doclet, tagObj) {
 
-            var valueObj = resolveProductTypes(doclet, tagObj);
+            let valueObj = resolveProductTypes(doclet, tagObj);
 
-            var text = valueObj.value;
+            let text = valueObj.value;
 
-            var del = text.search(/\s/),
+            let del = text.search(/\s/),
                 name = text.substr(del).trim().replace(/\s\s+/g, ' '),
                 value = text.substr(0, del).trim(),
-                folder = hcRoot + /samples/ + value
-            ;
+                folder = hcRoot + /samples/ + value;
 
             doclet.samples = doclet.samples || [];
 
             if (!fs.existsSync(folder)) {
-                console.error('@sample does not exist: ' + value);
+                logger.error('@sample does not exist: ' + value);
             }
             doclet.samples.push({
                 name: name,
@@ -618,23 +640,27 @@ exports.defineTags = function (dictionary) {
     });
 
     dictionary.defineTag('context', {
-      onTagged: function (doclet, tagObj) {
-        doclet.context = tagObj.value;
-      }
+        onTagged: function (doclet, tagObj) {
+            doclet.context = tagObj.value;
+        }
     });
 
     dictionary.defineTag('optionparent', {
         onTagged: function (doclet, tagObj) {
-            if (doclet.ignored) return removeOption(tagObj.value);
+            if (doclet.ignored) {
+                removeOption(tagObj.value);
+                return;
+            }
 
-            //doclet.fullname = tagObj.value;
             augmentOption(tagObj.value, doclet);
+            doclet.optionparent = true;
+            doclet.name = tagObj.value;
         }
     });
 
     dictionary.defineTag('product', {
         onTagged: function (doclet, tagObj) {
-            var adds = tagObj.value.split(' ');
+            let adds = tagObj.value.split(' ');
             doclet.products = doclet.products || [];
 
             // Need to make sure we don't add dupes
@@ -650,7 +676,7 @@ exports.defineTags = function (dictionary) {
 
     dictionary.defineTag('exclude', {
         onTagged: function (doclet, tagObj) {
-            var items = tagObj.text.split(',');
+            let items = tagObj.text.split(',');
 
             doclet.exclude = doclet.exclude || [];
 
@@ -658,22 +684,10 @@ exports.defineTags = function (dictionary) {
                 doclet.exclude.push(entry.trim());
             });
         }
-    });
-
-    dictionary.defineTag('excluding', {
-        onTagged: function (doclet, tagObj) {
-            var items = tagObj.text.split(',');
-
-            doclet.exclude = doclet.exclude || [];
-
-            items.forEach(function (entry) {
-                doclet.exclude.push(entry.trim());
-            });
-        }
-    });
+    }).synonym('excluding');
 
     dictionary.defineTag('ignore-option', {
-        onTagged: function (doclet, tagObj) {
+        onTagged: function (doclet) {
             doclet.ignored = true;
         }
     });
@@ -684,15 +698,15 @@ exports.defineTags = function (dictionary) {
                 return;
             }
 
-            if (tagObj.value.indexOf('highcharts') < 0 &&
-                tagObj.value.indexOf('highmaps') < 0 &&
-                tagObj.value.indexOf('highstock') < 0) {
+            if (!tagObj.value.includes('highcharts') &&
+                !tagObj.value.includes('highmaps') &&
+                !tagObj.value.includes('highstock')) {
 
                 doclet.defaultvalue = tagObj.text;
                 return;
             }
 
-            var valueObj = resolveProductTypes(doclet, tagObj);
+            let valueObj = resolveProductTypes(doclet, tagObj);
 
             doclet.defaultByProduct = doclet.defaultByProduct || {};
 
@@ -700,16 +714,13 @@ exports.defineTags = function (dictionary) {
                 doclet.defaultByProduct[p] = valueObj.value;
             });
 
-            //var parsed = parseTag(tagObj.value, true, true);
-            //doclet.defaultvalue = parsed;
+            // let parsed = parseTag(tagObj.value, true, true);
+            // doclet.defaultvalue = parsed;
         }
     });
 
     function handleValue(doclet, tagObj) {
-        doclet.values = tagObj.value;
-        return;
-
-        var t;
+        let t;
         doclet.values = doclet.values || [];
 
         // A lot of these options are defined as json.
@@ -721,7 +732,7 @@ exports.defineTags = function (dictionary) {
                 doclet.values.push(t);
             }
         } catch (e) {
-            doclet.values.push(tabObj.value);
+            doclet.values.push(tagObj.value);
         }
     }
 
@@ -737,11 +748,11 @@ exports.defineTags = function (dictionary) {
         }
     });
 
-    dictionary.defineTag('extends', {
-        onTagged: function (doclet, tagObj) {
-            doclet.extends = tagObj.value;
-        }
-    });
+    // dictionary.defineTag('extends', {
+    //     onTagged: function (doclet, tagObj) {
+    //         doclet.extends = tagObj.value;
+    //     }
+    // });
 
     dictionary.defineTag('productdesc', {
         onTagged: resolveProductTypes
@@ -754,10 +765,10 @@ exports.astNodeVisitor = {
 
 exports.handlers = {
     beforeParse: function (e) {
-        var palette = getPalette(hcRoot + '/css/highcharts.scss');
+        let palette = getPalette(hcRoot + '/css/highcharts.scss');
 
         Object.keys(palette).forEach(function (key) {
-            var reg = new RegExp('\\$\\{palette\\.' + key + '\\}', 'g');
+            let reg = new RegExp('\\$\\{palette\\.' + key + '\\}', 'g');
 
             e.source = e.source.replace(
                 reg,
@@ -765,37 +776,66 @@ exports.handlers = {
             );
         });
 
-        var match = e.source.match(/\s\*\/[\s]+\}/g);
+        let match = e.source.match(/\s\*\/[\s]+\}/g);
         if (match) {
             console.log(
-`Warning: Detected ${match.length} cases of a comment followed by } in
+                `Warning: Detected ${match.length} cases of a comment followed by } in
 ${e.filename}.
 This may lead to loose doclets not being parsed into the API. Move them up
 before functional code for JSDoc to see them.`.yellow
             );
         }
-
-    },
-
-    jsdocCommentFound: function (e) {
-
     },
 
     newDoclet: function (e) {
+        const doclet = e.doclet;
 
+        if (/^(H$|H\.)/.test(doclet.memberof)) {
+            doclet.memberof = doclet.memberof.replace(/^H$/, 'Highcharts').replace(/^H\./, 'Highcharts.');
+            doclet.longname = doclet.longname.replace(/^H\./, 'Highcharts.');
+            if (doclet.augments) {
+                doclet.augments = doclet.augments.map(arg => arg.replace(/^H\./, 'Highcharts.'));
+            }
+        }
+
+        if (doclet.longname.startsWith('Series.')) {
+            doclet.longname = doclet.longname.replace('Series.', 'Highcharts.Series#');
+            doclet.memberof = doclet.memberof.replace('Series', 'Highcharts.Series');
+        }
+
+        if (doclet.longname.startsWith('seriesTypes.')) {
+            doclet.longname = doclet.longname.replace('seriesTypes.', 'Highcharts.seriesTypes.');
+            doclet.memberof = doclet.memberof.replace('seriesTypes', 'Highcharts.seriesTypes');
+        }
+
+        if (doclet.kind === 'member' && doclet.scope === 'global' && !doclet.memberof || doclet.apioption || doclet.optionparent) {
+            doclet.ignored = true;
+        }
+
+        if (doclet.kind === 'typedef' && !doclet.memberof) {
+            doclet.memberof = 'Highcharts';
+        }
+
+        if (doclet.chartPrivate) {
+            doclet.access = null;
+        }
     },
 
-    parseComplete: function () {
-        options._meta.version = require(__dirname + '/../../../package.json').version;
-        options._meta.commit = exec('git rev-parse --short HEAD', {cwd: process.cwd()}).toString().trim();
-        options._meta.branch = exec('git rev-parse --abbrev-ref HEAD', {cwd: process.cwd()}).toString().trim();
-        options._meta.date = (new Date()).toString();
+    parseComplete: function (result) {
+        AllOptions._meta.version = require(path.join(__dirname, '/../../../package.json')).version;
+        AllOptions._meta.commit = exec('git rev-parse --short HEAD', {
+            cwd: process.cwd()
+        }).toString().trim();
+        AllOptions._meta.branch = exec('git rev-parse --abbrev-ref HEAD', {
+            cwd: process.cwd()
+        }).toString().trim();
+        AllOptions._meta.date = (new Date()).toString();
 
         let files = {};
 
         function inferTypeForTree(obj) {
             inferType(obj);
-        
+
             if (obj.meta && obj.meta.filename) {
                 // Remove user-identifiable info in filename
                 obj.meta.filename = obj.meta.filename.substr(
@@ -818,14 +858,34 @@ before functional code for JSDoc to see them.`.yellow
             }
         }
 
-        function addSeriesTypeDescription(type) {
-            var node = type;
-
-            // Make sense of the examples for general series
-            if (type === 'series') {
-                type = 'line';
+        Object.keys(AllOptions).forEach(function (name) {
+            // work around #8260:
+            if (name === '' || name === 'undefined') {
+                delete AllOptions[name];
+                return;
             }
-            var s = `
+            if (name !== '_meta') {
+                inferTypeForTree(AllOptions[name]);
+            }
+        });
+
+        Object.keys(AllOptions.plotOptions.children).forEach(addSeriesTypeDescription);
+
+        outputRawDoclets(result, AllOptions);
+
+        dumpOptions();
+        // createSitemaps();
+    }
+};
+
+function addSeriesTypeDescription(type) {
+    let node = type;
+
+    // Make sense of the examples for general series
+    if (type === 'series') {
+        type = 'line';
+    }
+    let s = `
 
 Configuration options for the series are given in three levels:
 1. Options for all series in a chart are defined in the [plotOptions.series](plotOptions.series)
@@ -850,29 +910,9 @@ Highcharts.chart('container', {
     }]
 });
 </pre>
-            `;
-            options.plotOptions.children[node].doclet.description += s;
-            if (options.series.children[node]) {
-                options.series.children[node].doclet.description += s;
-            }
-        }
-
-        Object.keys(options).forEach(function (name) {
-            // work around #8260:
-            if (name === '' || name === 'undefined') {
-                delete options[name];
-                return;
-            }
-            if (name !== '_meta') {
-                inferTypeForTree(options[name]);
-            }
-        });
-
-        Object.keys(options.plotOptions.children).forEach(addSeriesTypeDescription);
-
-        // console.log(Object.keys(files));
-
-        dumpOptions();
-        // createSitemaps();
+    `;
+    AllOptions.plotOptions.children[node].doclet.description += s;
+    if (AllOptions.series.children[node]) {
+        AllOptions.series.children[node].doclet.description += s;
     }
-};
+}

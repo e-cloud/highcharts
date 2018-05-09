@@ -45,6 +45,7 @@ const buildESModules = () => {
         type: 'both'
     });
 };
+const outputTSD = require('./tools/output-tsd');
 
 const compileSingleStyle = (fileName) => {
     const sass = require('node-sass');
@@ -907,11 +908,12 @@ const generateAPIDocs = ({ treeFile, output, onlyBuildCurrent }) => {
     };
     const sourceFiles = [
         './js/indicators',
+        './js/mixins',
         './js/modules',
         './js/parts',
         './js/parts-3d',
-        './js/parts-more',
         './js/parts-map',
+        './js/parts-more',
         './js/supplemental.docs.js'
     ];
     const configJSDoc = {
@@ -1138,6 +1140,25 @@ const jsdoc = () => {
         .then(() => generateAPIDocs(optionsAPI));
 };
 
+const tsd = () => {
+    const optionsAPI = {
+        version: getBuildProperties().version,
+        treeFile: './tree.json',
+        output: './build/api',
+        onlyBuildCurrent: true
+    };
+    return testTree(optionsAPI.treeFile)
+        .then(null, ()=> {
+            return generateAPIDocs(optionsAPI);
+        })
+        .then(() => {
+            return outputTSD.publish();
+        })
+        .then(() => {
+            console.log(colors.green('Created highcharts.d.ts'));
+        });
+};
+
 gulp.task('start-api-server', startServer);
 gulp.task('upload-api', uploadAPIDocs);
 gulp.task('create-productjs', createProductJS);
@@ -1147,6 +1168,7 @@ gulp.task('clean-code', cleanCode);
 gulp.task('copy-to-dist', copyToDist);
 gulp.task('filesize', filesize);
 gulp.task('jsdoc', jsdoc);
+gulp.task('tsd', tsd); // run `gulp jsdoc` before running `gulp tsd`
 gulp.task('styles', styles);
 /**
  * Gulp task to run the building process of distribution files. By default it

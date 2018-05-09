@@ -36,6 +36,7 @@
 /utils/samples/nightly/
 
 tree.json
+raw.json
 
 exporting-server/java/highcharts-export/highcharts-export-web/pom.xml.amazon
 exporting-server/java/highcharts-export/highcharts-export-web/pom.xml.github
@@ -53,6 +54,7 @@ nbproject/
 *.DS_Store
 /node_modules/
 
+.vscode
 .idea/
 *.iml
 *.error_log
@@ -72,3 +74,6 @@ samples/highcharts/common-js/webpack/demo.js
 /tmp/processed.api.json
 /package-lock.json
 /temp.js
+
+yarn.lock
+yarn.error

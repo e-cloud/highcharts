@@ -23,7 +23,7 @@ H.wrap(H.Data.prototype, 'init', function (proceed, options) {
     }
 });
 
-H.extend(H.Data.prototype, /** @lends H.Data */{
+H.extend(H.Data.prototype, /** @lends H.Data.prototype */{
     /**
      * Parse an SVG path into a simplified array that Highcharts can read
      */
